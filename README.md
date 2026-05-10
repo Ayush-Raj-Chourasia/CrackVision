@@ -44,6 +44,16 @@ The system supports:
 ### Web Frontend
 🌐 https://crackvision.vercel.app/
 
+### User Interface
+
+![CrackVision UI Screenshot](./assets/ui_screenshot.png)
+
+The web interface provides an intuitive workflow:
+- Upload road damage images
+- Select detection mode (Fast or Accurate)
+- Adjust confidence threshold
+- View annotated results with detection boxes and class labels
+
 ---
 
 # Features
@@ -54,6 +64,12 @@ The system supports:
 - Alligator Crack detection
 - Other Road Corruption detection
 - Pothole detection
+
+### Example Predictions
+
+![Test Set Predictions](./assets/test_predictions.png)
+
+The model successfully detects various types of pavement damage across diverse road conditions, lighting, and perspectives.
 
 ## Inference Modes
 
@@ -79,6 +95,12 @@ The system supports:
 | Training Epochs | 20 |
 | Inference Backend | YOLOv8-L |
 | Hardware | Tesla T4 GPU |
+
+### Training Curves
+
+![Training Curves](./assets/training_curves.png)
+
+All losses decreased smoothly over 20 epochs with validation mAP@0.5 reaching 0.5082, indicating the model would benefit from additional training.
 
 ---
 
