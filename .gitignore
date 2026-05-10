@@ -1,1 +1,5 @@
 .env
+*.md
+!README.md
+__pycache__
+crackvision_service.py

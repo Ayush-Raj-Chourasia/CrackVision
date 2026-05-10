@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+ultralytics>=8.3.0
+sahi>=0.11.0
+ensemble-boxes>=1.0.9
+opencv-python-headless>=4.10.0.84
+numpy>=1.26.4
+pillow>=10.4.0
+torch
+torchvision
+matplotlib>=3.8.0
+pyyaml>=6.0.2
+albumentations>=1.4.0
+pycocotools
