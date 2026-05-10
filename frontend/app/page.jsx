@@ -119,9 +119,33 @@ export default function Page() {
             </div>
           </div>
 
-          <label className="dropzone">
+          <label className="dropzone" aria-label="Upload image">
             <input type="file" accept="image/*" onChange={handleFileChange} />
-            <span className="dropzone-title">Drag an image here or browse</span>
+
+            <div
+              className="upload-box"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 160,
+                border: '2px dashed rgba(255,255,255,0.06)',
+                borderRadius: 12,
+                background: 'transparent',
+                padding: 12,
+              }}
+            >
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                <path d="M16 16V13C16 11.8954 15.1046 11 14 11H10C8.89543 11 8 11.8954 8 13V16" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12 3V15" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 7L12 3L16 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            <span style={{position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0}}>
+              Drag an image here or browse
+            </span>
+
             <span className="dropzone-subtitle">
               Works best on street-level frames, dashcam shots, and large road panoramas.
             </span>
