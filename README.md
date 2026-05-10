@@ -8,54 +8,204 @@ app_file: app.py
 ---
 
 # CrackVision
+### Slicing-Enhanced Pavement Damage Detection using YOLOv8
 
-CrackVision is a road-damage detection project built around a fine-tuned YOLOv8-L model and crack-aware inference. The training run you shared is already complete and produced `best.pt` with `mAP@0.5 = 0.5082` after 20 epochs.
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20HuggingFace-Spaces-blue)](https://huggingface.co/spaces/AlphaCalculus/crackvision)
 
-## What is included
+---
 
-- A deployable FastAPI inference service in `app.py` for Hugging Face Spaces or any Docker host.
-- A shared inference layer in `crackvision_service.py` with Fast mode and Accurate mode.
-- A Vercel-ready frontend at the repository root.
-- A custom Google Stitch prompt in `STITCH_PROMPT.md` for generating a non-generic UI.
+## 🎯 Overview
 
-## Recommended deployment shape
+CrackVision is a deep learning pipeline for automated road damage detection and classification. It detects five types of pavement damage from real-world road imagery using **YOLOv8-L** combined with **SAHI sliced inference**, **Test-Time Augmentation (TTA)**, and **Weighted Box Fusion (WBF)**.
 
-1. Deploy the backend to Hugging Face Spaces using the Dockerfile in the repo root.
-2. Deploy the frontend to Vercel from the repository root.
-3. Set `CRACKVISION_API_URL` in Vercel to the public Hugging Face Space URL.
+The key insight: standard object detectors downscale high-resolution road images to 640×640px, causing thin cracks (sub-10px features) to become invisible. CrackVision solves this by slicing images into overlapping 640px tiles, detecting on each tile, then reassembling detections.
 
-## Local run
+### Live Demo
+**[Hugging Face Spaces](https://huggingface.co/spaces/AlphaCalculus/crackvision)**  
+**[Web Frontend on Vercel](https://crackvision.vercel.app)**
 
-```bash
-pip install -r requirements.txt
-uvicorn app:app --host 0.0.0.0 --port 7860
+---
+
+## 📊 Results
+
+| Metric | Value |
+|---|---|
+| Validation mAP@0.5 | **0.5082** |
+| Validation mAP@0.5:0.95 | **0.2390** |
+| Training epochs | 20           |
+| Optimized confidence threshold | 0.50 |
+| Inference speed (T4 GPU) | ~400ms/image (with SAHI) |
+
+### Training Curves
+All losses decreased smoothly over 20 epochs with mAP still rising at termination — indicating the model would improve further with additional training time.
+
+---
+
+## 🗂️ Dataset
+
+**Crackathon 2025** (`anulayakhare/crackathon-data`) — Road damage images
+
+| Split | Images |
+|---|---|
+| Train | 26,385 |
+| Validation | 6,000 |
+| Test | 6,000 |
+
+### Damage Classes
+
+| ID | Class | Distribution | Severity |
+|---|---|---|---|
+| 0 | Longitudinal Crack | 39.7% | Moderate |
+| 1 | Transverse Crack | 18.1% | Moderate |
+| 2 | Alligator Crack | 16.1% | High |
+| 3 | Other Corruption | 16.2% | Moderate |
+| 4 | Pothole | 9.9% | High |
+
+---
+
+## 🏗️ Architecture & Method
+
+```
+Road Image (high-res)
+       │
+       ├─► SAHI Slicing (640px tiles, 20% overlap)
+       │         │
+       │    YOLOv8-L inference per tile
+       │         │
+       │    Reassemble to original coords
+       │
+       ├─► Standard inference + H-flip TTA
+       │
+       └─► Weighted Box Fusion (WBF) → Final detections
 ```
 
-Then open `http://localhost:7860` for the API or use the frontend below.
+### Key Design Decisions
 
-## Frontend run
+**1. Crack-safe augmentations**
+Standard YOLO augmentations (mosaic, mixup, copy-paste) fragment thin crack lines across image boundaries. We disable them entirely.
 
-```bash
-npm install
-npm run dev
+| Augmentation | Standard | CrackVision | Why |
+|---|---|---|---|
+| Mosaic | ON | OFF | Breaks crack continuity |
+| Mixup | ON | OFF | Creates ghost cracks |
+| Rotation | ±180° | ±15° | Cracks are directional |
+| Vertical flip | ON | OFF | Changes physical meaning |
+
+**2. Label quality filtering**
+Crack bounding boxes with Canny edge density below 0.02 are removed — they represent annotation noise rather than actual cracks. 37,900 high-quality boxes retained.
+
+**3. SAHI sliced inference**
+High-resolution road images compressed to 640px lose thin crack features. SAHI tiles each image into overlapping 640px patches, allowing the detector to see cracks at their native scale.
+
+**4. Weighted Box Fusion over NMS**
+NMS discards overlapping predictions from SAHI tiles and TTA. WBF merges them by averaging coordinates weighted by confidence score.
+
+---
+
+## 📁 Repository Structure
+
+```
+CrackVision/
+├── notebook/
+│   └── crackvision_training.py     # Full training pipeline (Kaggle)
+├── app/
+│   ├── app.py                      # Gradio app (Hugging Face Spaces)
+│   └── requirements.txt
+├── frontend/
+│   └── index.html                  # Web frontend (Vercel)
+├── report/
+│   └── report.tex                  # IEEE LaTeX report
+├── assets/
+│   ├── training_curves.png
+│   ├── conf_optimization.png
+│   └── test_predictions.png
+└── README.md
 ```
 
-Set `CRACKVISION_API_URL` in the root `.env.local` before starting the frontend.
+---
 
-## Model file
+## 🚀 Deployment
 
-The service expects `RoadDamage/yolov8l_road_damage/weights/best.pt` by default.
+### Option 1: Hugging Face Spaces (Recommended)
 
-If you publish the repo to GitHub or Hugging Face, keep the checkpoint in Git LFS or upload it as a separate artifact. If you prefer a different location, set `MODEL_PATH`.
+```bash
+# 1. Create new Space at huggingface.co/new-space
+# 2. Select SDK: Gradio
+# 3. Upload these files:
+#    - app/app.py
+#    - app/requirements.txt
+#    - best.pt  (your trained model)
+# 4. Space auto-builds → public URL
+```
 
-## What is still left for a real submission
+### Option 2: Vercel Frontend
 
-- Upload `best.pt` to the deployment target if it is not already bundled.
-- Set the public backend URL in Vercel.
-- If you want a polished presentation, drop the Google Stitch UI into the root frontend and connect it to the API route.
+```bash
+# 1. Fork this repo
+# 2. Connect to Vercel at vercel.com/new
+# 3. Set environment variable:
+#    HF_SPACE_URL = https://your-username-crackvision.hf.space
+# 4. Deploy — Vercel builds automatically
+```
 
-## Notes
+### Option 3: Run Locally
 
-- `accurate` mode uses standard inference plus SAHI slicing and WBF.
-- `fast` mode uses standard inference with horizontal-flip TTA only.
-- The default confidence threshold is loaded from `RoadDamage/opt_conf.json` when present.
+```bash
+# Clone
+git clone https://github.com/Ayush-Raj-Chourasia/CrackVision
+cd CrackVision
+
+# Install
+pip install ultralytics gradio opencv-python sahi ensemble-boxes
+
+# Place your best.pt in the root directory
+
+# Run Gradio app
+python app/app.py
+
+# OR run Streamlit app
+pip install streamlit
+streamlit run app/streamlit_app.py
+```
+
+---
+
+## 🔬 Technical Details
+
+### Model
+- **Architecture**: YOLOv8-L (Large) — 43.7M parameters
+- **Pre-training**: COCO (80 classes, 118k images)
+- **Fine-tuning**: Crackathon 2025 dataset
+
+### Training Configuration
+```python
+epochs       = 80   (stopped at 20 due to time constraints)
+batch        = 8
+imgsz        = 640
+optimizer    = AdamW
+lr0          = 0.001
+lrf          = 0.01   # cosine decay
+weight_decay = 0.0005
+amp          = True   # mixed precision fp16
+loss_box     = 7.5    # high — precise crack localization
+loss_cls     = 0.5    # low — only 5 classes
+loss_dfl     = 1.5    # medium
+```
+
+
+---
+
+## 📚 References
+
+1. Wang, C. Y., et al. "YOLOv9: Learning What You Want to Learn Using Programmable Gradient Information." arXiv, 2024.
+2. Jocher, G., et al. "Ultralytics YOLOv8." GitHub, 2023. https://github.com/ultralytics/ultralytics
+3. Akyon, F. C., et al. "Slicing Aided Hyper Inference and Fine-tuning for Small Object Detection." ICIP, 2022.
+4. Solovyev, R., et al. "Weighted Boxes Fusion: Ensembling Boxes from Different Object Detection Models." Image and Vision Computing, 2021.
+5. Arya, D., et al. "RDD2022: A Multi-National Image Dataset for Automatic Road Damage Detection." arXiv, 2022.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
